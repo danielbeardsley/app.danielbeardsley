@@ -1,0 +1,10 @@
+{
+  "name": "app.danielbeardsley",
+  "dependencies": {
+  },
+  "devDependencies": {
+  },
+  "repository": "git@github.com:danielbeardsley/app.danielbeardsley.com",
+  "author": "daniel.beardsley@gmail.com",
+  "license": "MIT"
+}
