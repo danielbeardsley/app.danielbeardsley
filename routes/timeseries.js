@@ -1,26 +1,50 @@
 const express = require('express');
+const createError = require('http-errors');
 const router = express.Router();
 const fsPromises = require('fs/promises');
 
-router.get('/', (req, res, next) => {
-  res.render('create');
-});
-
-router.post('/', async (req, res, next) => {
-  console.log(req.headers);
-  const [seriesName, filename] = newName();
-  await writeRecord(filename, ['timestamp', 'value']);
-  redirectToView(seriesName, res);
-});
+router.route('/')
+   // GET: Show the form to create a new file
+  .get((req, res, next) => {
+    res.render('create');
+  })
+  // POST Create a new file
+  .post(async (req, res, next) => {
+    const [seriesName, filename] = newName();
+    await writeRecord(filename, ['timestamp', 'value']);
+    redirectToView(seriesName, res);
+  });
 
 router.route(/^\/record\/([a-z0-9-]+)/)
-.get(async (req, res, next) => {
-  const seriesName = req.params[0];
-   console.log("Recording: " + seriesName);
-  const filename = nameToPath(seriesName);
-  await writeRecord(filename, [Math.round(Date.now()/1000), Math.random() * 20]);
-  tailSeries(filename, res);
-});
+  // Parse the param
+  .all((req, res, next) => {
+     const seriesName = req.params[0];
+     if (seriesName.match(/^[a-z0-9-]+$/)) {
+        req.params.seriesName = seriesName
+        next();
+     } else {
+        next(createError(404));
+     }
+  })
+  // GET: Show the form
+  .get((req, res, next) => {
+    const filename = nameToPath(req.params.seriesName);
+     fsPromises.readFile(filename)
+     .then((data) =>
+        res.render("form", {
+          data
+        })
+     ).catch(() => next(createError(404)));
+  })
+  // POST: append to the file
+  .post(async (req, res, next) => {
+    const valueStr = req.body?.value;
+    const value = parseInt(valueStr, 10);
+    const seriesName = req.params.seriesName;
+    const filename = nameToPath(seriesName);
+    await writeRecord(filename, [ts(), value]);
+    redirectToView(seriesName, res);
+  });
 
 function newName() {
   const name = require('crypto').randomUUID()
@@ -44,6 +68,10 @@ async function tailSeries(filename, res) {
 
 function redirectToView(seriesName, res) {
   res.redirect(`/timeseries/record/${seriesName}`);
+}
+
+function ts() {
+   return Math.round(Date.now()/1000);
 }
 
 module.exports = router;
