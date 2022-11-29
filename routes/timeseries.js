@@ -10,7 +10,7 @@ router.post('/', async (req, res, next) => {
   console.log(req.headers);
   const [seriesName, filename] = newName();
   await writeRecord(filename, ['timestamp', 'value']);
-  res.redirect(`/timeseries/record/${seriesName}`);
+  redirectToView(seriesName, res);
 });
 
 router.route(/^\/record\/([a-z0-9-]+)/)
@@ -40,6 +40,10 @@ async function tailSeries(filename, res) {
    res.type("text/plain");
    res.send(data);
    res.end();
+}
+
+function redirectToView(seriesName, res) {
+  res.redirect(`/timeseries/record/${seriesName}`);
 }
 
 module.exports = router;
