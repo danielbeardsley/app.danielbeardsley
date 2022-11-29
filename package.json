@@ -1,9 +1,10 @@
 {
   "name": "app.danielbeardsley",
+  "description": "The code behind app.danielbeardsley.com",
   "dependencies": {
+    "express": "^4.18.2"
   },
-  "devDependencies": {
-  },
+  "main": "app.js",
   "repository": "git@github.com:danielbeardsley/app.danielbeardsley.com",
   "author": "daniel.beardsley@gmail.com",
   "license": "MIT"
