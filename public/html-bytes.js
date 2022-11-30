@@ -7,17 +7,25 @@ window.addEventListener('load', () =>  {
 
       const doc = document.createElement('html');
       doc.innerHTML = text;
-      visitNode(doc);
-      console.log("Size: " + doc.innerHTML.length);
+      const report = visitNode(doc);
+      const reportContainer = document.createElement('ul');
+      reportContainer.appendChild(report);
+      document.body.appendChild(reportContainer);
    }
 });
 
 function visitNode(node, parent, indent = 0) {
-   console.log(" ".repeat(indent) + node.tagName + ":" + node.outerHTML.length);
+   const el = document.createElement('li');
+   el.innerText = node.tagName + ": " + node.outerHTML.length;
 
    if (node.children) {
+      el.innertText = node.tagName + ": " + node.outerHTML.length;
+      const list = document.createElement('ul');
       for (const childNode of node.children) {
-         visitNode(childNode, node, indent + 2);
+         const childEl = visitNode(childNode, node, indent + 2);
+         list.appendChild(childEl);
       }
+      el.appendChild(list);
    }
+   return el;
 }
