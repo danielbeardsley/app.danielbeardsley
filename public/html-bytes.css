@@ -1,0 +1,12 @@
+li ul {
+   display: none;
+   margin-bottom: 10px
+}
+
+li {
+   cursor: pointer;
+}
+
+li.open ul {
+   display: block;
+}

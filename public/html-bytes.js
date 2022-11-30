@@ -18,7 +18,7 @@ function visitNode(node, parent, indent = 0) {
    const el = document.createElement('li');
    el.innerText = node.tagName + ": " + node.outerHTML.length;
 
-   if (node.children) {
+   if (node.children.length) {
       el.innertText = node.tagName + ": " + node.outerHTML.length;
       const list = document.createElement('ul');
       for (const childNode of node.children) {
@@ -29,3 +29,9 @@ function visitNode(node, parent, indent = 0) {
    }
    return el;
 }
+
+document.addEventListener('click', function(event) {
+   if (event.target.tagName == 'LI') {
+      event.target.classList.toggle("open");
+   }
+});
