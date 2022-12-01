@@ -5,8 +5,30 @@ li ul {
 
 li {
    cursor: pointer;
+   margin: 0.2em 0;
 }
 
-li.open ul {
+li.open {
+   margin-bottom: 0.5em;
+}
+
+li.open > ul {
+   display: block;
+
+}
+
+tt.tag {
+   margin-left: 1em;
+}
+
+tt.contents {
+   display: none;
+}
+
+li.leaf.open > tt.tag {
+   display: none;
+}
+
+li.open > tt.contents {
    display: block;
 }
