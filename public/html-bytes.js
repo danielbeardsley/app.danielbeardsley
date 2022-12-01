@@ -59,18 +59,18 @@ function analyzeHtml(html) {
 }
 
 function buildInnerTextLine(node, parentHtmlLength) {
-   let text = '';
+   let textLength = 0;
    for (var i = 0; i < node.childNodes.length; ++i) {
      if (node.childNodes[i].nodeType === Node.TEXT_NODE) {
-       text += node.childNodes[i].textContent;
+       textLength += node.childNodes[i].textContent.length;
      }
    }
-   if (!text) {
+   if (!textLength) {
       return null;
    }
    const el = document.createElement('li');
-   const portionOfParent = (text.length / parentHtmlLength) || 1;
-   el.innerText = `innerText: ${percent.format(portionOfParent)} (${bytes.format(text.length)})`;
+   const portionOfParent = (textLength / parentHtmlLength) || 1;
+   el.innerText = `innerText: ${percent.format(portionOfParent)} (${bytes.format(textLength)})`;
    return el;
 }
 
