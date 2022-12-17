@@ -15,6 +15,7 @@ router.route('/')
     redirectToView(seriesName, res);
   });
 
+router.use("/record", express.static("user-data"));
 router.route(/^\/record\/([a-z0-9-]+)/)
   // Parse the param
   .all((req, res, next) => {
@@ -32,7 +33,9 @@ router.route(/^\/record\/([a-z0-9-]+)/)
      fsPromises.readFile(filename)
      .then((data) =>
         res.render("form", {
-          data
+          url: req.originalUrl,
+          name: req.params.seriesName,
+          data,
         })
      ).catch(() => next(createError(404)));
   })
