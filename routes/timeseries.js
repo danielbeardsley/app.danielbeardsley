@@ -15,7 +15,7 @@ router.route('/')
     redirectToView(seriesName, res);
   });
 
-router.use("/record", express.static("user-data"));
+router.use("/record", express.static("user-data/time-series"));
 router.route(/^\/record\/([a-z0-9-]+)/)
   // Parse the param
   .all((req, res, next) => {
@@ -55,7 +55,7 @@ function newName() {
 }
 
 function nameToPath(seriesName) {
-  return `user-data/${seriesName}.csv`;
+  return `user-data/time-series/${seriesName}.csv`;
 }
 
 function writeRecord(filename, values) {
