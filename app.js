@@ -19,7 +19,10 @@ app.use(function(req, res, next){
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), {
+   index: false, // don't serve index.html
+   redirect: false, // don't redirect to add slash if target is directory
+}));
 
 app.use('/timeseries', timeSeriesRouter);
 app.use('/html-bytes', htmlBytesRouter);

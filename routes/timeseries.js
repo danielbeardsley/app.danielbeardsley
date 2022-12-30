@@ -4,7 +4,10 @@ const router = express.Router();
 const fsPromises = require('fs/promises');
 const path = require('path');
 
-router.use("/collection", express.static("user-data/time-series"));
+router.use("/collection", express.static("user-data/time-series",{
+   index: false, // don't serve index.html
+   redirect: false, // don't redirect to add slash if target is directory
+}));
 router.param('collectionName', safeParamValidator)
 router.param('seriesName', safeParamValidator)
 router.route('/')
