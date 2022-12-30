@@ -8,5 +8,6 @@ block content
     input(type="submit", value="Create Timeseries")
   ul
    - seriesNames.forEach((name) => {
-     li= name
+     li
+       a(href=`${url}/${name}`)= name
    - })

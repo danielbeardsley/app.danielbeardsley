@@ -26,6 +26,7 @@ router.route('/collection/:collectionName')
     fsPromises.readdir(dirname)
       .then((names) =>
         res.render("collection", {
+          url: req.originalUrl,
           seriesNames: names.map((name) => path.basename(name, '.csv')),
         })
       ).catch(() => next(createError(404)));
