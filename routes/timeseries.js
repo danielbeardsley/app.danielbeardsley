@@ -19,7 +19,7 @@ router.route('/')
   .post(async (req, res, next) => {
     const [collectionName, dirName] = newCollection();
     await fsPromises.mkdir(dirName);
-    redirectToCollectionView(collectionName, res);
+    res.redirect(collectionUrl(collectionUrl));
   });
 
 router.route('/collection/:collectionName')
@@ -29,7 +29,7 @@ router.route('/collection/:collectionName')
     fsPromises.readdir(dirname)
       .then((names) =>
         res.render("collection", {
-          url: req.originalUrl,
+          collectionUrl: collectionUrl(req.params.collectionName),
           seriesNames: names.map((name) => path.basename(name, '.csv')),
         })
       ).catch(() => next(createError(404)));
@@ -42,7 +42,7 @@ router.route('/collection/:collectionName')
     const seriesName = makeSafeName(req.body.newSeriesName);
     const filename = nameToPath(collectionName, seriesName);
     await writeRecord(filename, ["timestamp", "value"]);
-    redirectToSeriesView(collectionName, seriesName, res);
+    res.redirect(seriesUrl(collectionName, seriesName));
   });
 
 router.route('/collection/:collectionName/:seriesName')
@@ -64,7 +64,7 @@ router.route('/collection/:collectionName/:seriesName')
     const value = parseInt(valueStr, 10);
     const filename = nameToPath(req.params.collectionName, req.params.seriesName);
     await writeRecord(filename, [ts(), value]);
-    redirectToSeriesView(req.params.collectionName, req.params.collectionName, res);
+    res.redirect(seriesUrl(req.params.collectionName, req.params.seriesName));
   });
 
 function newCollection() {
@@ -103,12 +103,12 @@ async function tailSeries(filename, res) {
    res.end();
 }
 
-function redirectToSeriesView(collectionName, seriesName, res) {
-  res.redirect(`/timeseries/collection/${collectionName}/${seriesName}`);
+function seriesUrl(collectionName, seriesName) {
+  return `/timeseries/collection/${collectionName}/${seriesName}`;
 }
 
-function redirectToCollectionView(collectionName, res) {
-  res.redirect(`/timeseries/collection/${collectionName}`);
+function collectionUrl(collectionName) {
+  return `/timeseries/collection/${collectionName}`;
 }
 
 function ts() {
