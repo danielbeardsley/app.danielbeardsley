@@ -4,6 +4,7 @@ const router = express.Router();
 const fsPromises = require('fs/promises');
 const path = require('path');
 
+router.use("/collection", express.static("user-data/time-series"));
 router.param('collectionName', safeParamValidator)
 router.param('seriesName', safeParamValidator)
 router.route('/')
@@ -61,8 +62,6 @@ router.route('/collection/:collectionName/:seriesName')
     await writeRecord(filename, [ts(), value]);
     redirectToSeriesView(req.params.collectionName, req.params.collectionName, res);
   });
-
-router.use("/collection", express.static("user-data/time-series"));
 
 function newCollection() {
   const name = require('crypto').randomUUID()
