@@ -1,0 +1,12 @@
+extends layout
+
+block content
+  h1 Collection of Timeseries
+  h3 Create a new Timeseries
+  form(method="POST")
+    input(pattern="^[0-9a-zA-Z-]+$", name="newSeriesName", placeholder="Series Name", required, autofocus)
+    input(type="submit", value="Create Timeseries")
+  ul
+   - seriesNames.forEach((name) => {
+     li= name
+   - })

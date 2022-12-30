@@ -1,0 +1,12 @@
+extends layout
+
+block content
+  h1= name
+  p
+    a(href=(url + ".csv")) Download CSV
+  h3 Record a Data Point
+  form(method="POST")
+    input(pattern="^[0-9.-]+$", name="value", required, autofocus)
+    input(type="submit", value="Save")
+  div
+    pre= data
