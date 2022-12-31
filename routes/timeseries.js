@@ -1,16 +1,16 @@
 const express = require('express');
 const createError = require('http-errors');
-const router = express.Router();
+const app = express();
 const fsPromises = require('fs/promises');
 const path = require('path');
 
-router.use("/collection", express.static("user-data/time-series",{
+app.use("/collection", express.static("user-data/time-series",{
    index: false, // don't serve index.html
    redirect: false, // don't redirect to add slash if target is directory
 }));
-router.param('collectionName', safeParamValidator)
-router.param('seriesName', safeParamValidator)
-router.route('/')
+app.param('collectionName', safeParamValidator)
+app.param('seriesName', safeParamValidator)
+app.route('/')
    // GET: Show the form to create a new file
   .get((req, res, next) => {
     res.render('collection-create');
@@ -22,7 +22,7 @@ router.route('/')
     res.redirect(collectionUrl(collectionUrl));
   });
 
-router.route('/collection/:collectionName')
+app.route('/collection/:collectionName')
   // GET: Show collection page
   .get((req, res, next) => {
     const dirname = nameToPath(req.params.collectionName);
@@ -45,7 +45,7 @@ router.route('/collection/:collectionName')
     res.redirect(seriesUrl(collectionName, seriesName));
   });
 
-router.route('/collection/:collectionName/:seriesName')
+app.route('/collection/:collectionName/:seriesName')
   // GET: view a series
   .get((req, res, next) => {
     const filename = nameToPath(req.params.collectionName, req.params.seriesName);
@@ -104,15 +104,15 @@ async function tailSeries(filename, res) {
 }
 
 function seriesUrl(collectionName, seriesName) {
-  return `/timeseries/collection/${collectionName}/${seriesName}`;
+  return `${app.mountpath}/collection/${collectionName}/${seriesName}`;
 }
 
 function collectionUrl(collectionName) {
-  return `/timeseries/collection/${collectionName}`;
+  return `${app.mountpath}/collection/${collectionName}`;
 }
 
 function ts() {
    return Math.round(Date.now()/1000);
 }
 
-module.exports = router;
+module.exports = app;
