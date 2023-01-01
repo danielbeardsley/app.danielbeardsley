@@ -2,6 +2,7 @@
   "name": "app.danielbeardsley",
   "description": "The code behind app.danielbeardsley.com",
   "dependencies": {
+    "csv": "^6.2.5",
     "debug": "~4.3.4",
     "express": "~4.18.2",
     "http-errors": "~2.0.0",

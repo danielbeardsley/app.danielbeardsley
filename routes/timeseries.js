@@ -3,6 +3,11 @@ const createError = require('http-errors');
 const app = express();
 const fsPromises = require('fs/promises');
 const path = require('path');
+const { createReadStream } = require('fs');
+const { parse } = require('csv-parse');
+const { stringify } = require('csv-stringify');
+const { transform } = require('stream-transform');
+const { runningAverage } = require('./timeseries/transform.js');
 
 app.use("/collection", express.static("user-data/time-series",{
    index: false, // don't serve index.html
@@ -44,6 +49,30 @@ app.route('/collection/:collectionName')
     await writeRecord(filename, ["timestamp", "value"]);
     res.redirect(seriesUrl(collectionName, seriesName));
   });
+
+app.get('/collection/:collectionName/transform/:seriesName', function (req, res, next) {
+  const filename = nameToPath(req.params.collectionName, req.params.seriesName);
+  const runningAverage1 = runningAverage(86400);
+  const runningAverage7 = runningAverage(86400*7);
+
+  createReadStream(filename)
+  .pipe(parse({
+    columns: true,
+    ltrim: true,
+  }))
+  .pipe(transform((record) => {
+    record.timestamp = parseFloat(record.timestamp);
+    record.value = parseFloat(record.value);
+    record.running_1 = runningAverage1(record);
+    record.running_7 = runningAverage7(record);
+    return record;
+  }))
+  .pipe(stringify({
+    header: true,
+    // columns: ['timestamp', 'value']
+  }))
+  .pipe(res);
+});
 
 app.route('/collection/:collectionName/:seriesName')
   // GET: view a series
