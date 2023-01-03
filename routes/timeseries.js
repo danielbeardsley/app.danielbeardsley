@@ -7,7 +7,7 @@ const { createReadStream } = require('fs');
 const { parse } = require('csv-parse');
 const { stringify } = require('csv-stringify');
 const { transform } = require('stream-transform');
-const { runningAverage } = require('./timeseries/transform.js');
+const { runningAverage } = require('./timeseries/transforms/running-average.js');
 
 app.use("/collection", express.static("user-data/time-series",{
    index: false, // don't serve index.html
