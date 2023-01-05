@@ -37,8 +37,6 @@ app.route('/collection/:collectionName')
   // POST Create a new time-series
   .post(async (req, res, next) => {
     const collectionName = req.params.collectionName;
-    console.log(req.body);
-    console.log(req.params);
     const seriesName = makeSafeName(req.body.newSeriesName);
     const filename = nameToPath(collectionName, seriesName);
     await writeRecord(filename, ["timestamp", "value"]);
@@ -61,7 +59,7 @@ app.route('/collection/:collectionName/:seriesName')
   // POST: append to the file
   .post(async (req, res, next) => {
     const valueStr = req.body?.value;
-    const value = parseInt(valueStr, 10);
+    const value = parseFloat(valueStr, 10);
     const filename = nameToPath(req.params.collectionName, req.params.seriesName);
     await writeRecord(filename, [ts(), value]);
     res.redirect(seriesUrl(req.params.collectionName, req.params.seriesName));
