@@ -8,6 +8,7 @@ const { parse } = require('csv-parse');
 const { stringify } = require('csv-stringify');
 const { transform } = require('stream-transform');
 const { runningAverage } = require('./timeseries/transforms/running-average.js');
+const { getLocalizedDate } = require('./timeseries/transforms/date.js');
 
 app.use("/collection", express.static("user-data/time-series",{
    index: false, // don't serve index.html
@@ -50,10 +51,16 @@ app.route('/collection/:collectionName')
     res.redirect(seriesUrl(collectionName, seriesName));
   });
 
-app.get('/collection/:collectionName/transform/:seriesName', function (req, res, next) {
+app.get('/collection/:collectionName/:seriesName/transform', function (req, res, next) {
   const filename = nameToPath(req.params.collectionName, req.params.seriesName);
   const runningAverage1 = runningAverage(86400);
   const runningAverage7 = runningAverage(86400*7);
+  let getDate;
+  try {
+    getDate = getLocalizedDate(req.query.locale || 'en-US', req.query.timezone || 'PST');
+  } catch (e) {
+    return res.end("Invalid locale or timezone query param");
+  }
 
   createReadStream(filename)
   .pipe(parse({
@@ -65,6 +72,7 @@ app.get('/collection/:collectionName/transform/:seriesName', function (req, res,
     record.value = parseFloat(record.value);
     record.running_1 = runningAverage1(record);
     record.running_7 = runningAverage7(record);
+    record.date = getDate(record);
     return record;
   }))
   .pipe(stringify({
@@ -82,6 +90,7 @@ app.route('/collection/:collectionName/:seriesName')
      .then((data) =>
         res.render("series", {
           url: req.originalUrl,
+          transformUrl: req.originalUrl + "/transform?locale=en-US&timeZone=PST",
           name: req.params.seriesName,
           data,
         })

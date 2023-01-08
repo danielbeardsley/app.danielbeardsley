@@ -2,8 +2,13 @@ extends layout
 
 block content
   h1= name
+  h3 Raw CSV
   p
     a(href=(url + ".csv")) Download CSV
+  h3 Transformed
+  p Takes in query params <tt>locale</tt> and <tt>timezone</tt> and adds a <tt>Date</tt> column.
+    br
+    a(href=(transformUrl))= transformUrl
   h3 Record a Data Point
   form(method="POST")
     input(pattern="^[0-9.-]+$", name="value", required, autofocus)
