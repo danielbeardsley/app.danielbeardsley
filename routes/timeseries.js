@@ -62,6 +62,7 @@ app.get('/collection/:collectionName/:seriesName/transform', function (req, res,
     return res.end("Invalid locale or timezone query param");
   }
 
+  res.append("Content-Type", "text/csv");
   createReadStream(filename)
   .pipe(parse({
     columns: true,
