@@ -53,32 +53,15 @@ app.route('/collection/:collectionName')
 
 app.get('/collection/:collectionName/:seriesName/transform', function (req, res, next) {
   const filename = nameToPath(req.params.collectionName, req.params.seriesName);
-  const runningAverage1 = runningAverage(86400);
-  const runningAverage7 = runningAverage(86400*7);
-  let getDate;
   try {
-    getDate = getLocalizedDate(req.query.locale || 'en-US', req.query.timezone || 'PST');
+    getLocalizedDate(req.query.locale || 'en-US', req.query.timezone || 'PST');
   } catch (e) {
     return res.end("Invalid locale or timezone query param");
   }
-
-  res.append("Content-Type", "text/csv");
-  createReadStream(filename)
-  .pipe(parse({
-    columns: true,
-    ltrim: true,
-  }))
-  .pipe(transform((record) => {
-    record.timestamp = parseFloat(record.timestamp);
-    record.value = parseFloat(record.value);
-    record.running_1 = runningAverage1(record);
-    record.running_7 = runningAverage7(record);
-    record.date = getDate(record);
-    return record;
-  }))
+  transformCsv(filename, req.query.locale, req.query.timezone)
   .pipe(stringify({
     header: true,
-    // columns: ['timestamp', 'value']
+    columns: ['date', 'timestamp', 'value', 'running_1', 'running_7'],
   }))
   .pipe(res);
 });
@@ -87,7 +70,7 @@ app.route('/collection/:collectionName/:seriesName')
   // GET: view a series
   .get((req, res, next) => {
     const filename = nameToPath(req.params.collectionName, req.params.seriesName);
-     fsPromises.readFile(filename)
+    streamToString(transformCsv(filename))
      .then((data) =>
         res.render("series", {
           url: req.originalUrl,
@@ -152,6 +135,35 @@ function collectionUrl(collectionName) {
 
 function ts() {
    return Math.round(Date.now()/1000);
+}
+
+function transformCsv(filename, locale, timezone) {
+  const runningAverage1 = runningAverage(86400);
+  const runningAverage7 = runningAverage(86400*7);
+  const getDate = getLocalizedDate(locale || 'en-US', timezone || 'PST');
+
+  return createReadStream(filename)
+  .pipe(parse({
+    columns: true,
+    ltrim: true,
+  }))
+  .pipe(transform((record) => {
+    record.timestamp = parseFloat(record.timestamp);
+    record.value = parseFloat(record.value);
+    record.running_1 = runningAverage1(record);
+    record.running_7 = runningAverage7(record);
+    record.date = getDate(record);
+    return record;
+  }));
+}
+
+function streamToString(stream) {
+  const chunks = [];
+  return new Promise((resolve, reject) => {
+    stream.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+    stream.on('error', (err) => reject(err));
+    stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+  })
 }
 
 module.exports = app;
