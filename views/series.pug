@@ -9,4 +9,11 @@ block content
     input(pattern="^[0-9.-]+$", name="value", required, autofocus)
     input(type="submit", value="Save")
   div
-    pre= data
+    table
+      tr
+        th Timestamp
+        th Value
+      each measurement in measurements
+         tr
+            td= (new Date(measurement.timestamp * 1000)).toISOString()
+            td= measurement.value

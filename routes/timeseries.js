@@ -42,16 +42,13 @@ app.route('/collection/:collectionName')
 
 app.route('/collection/:collectionName/:seriesName')
   // GET: view a series
-  .get((req, res, next) => {
-    const filename = nameToPath(req.params.collectionName, req.params.seriesName);
-     fsPromises.readFile(filename)
-     .then((data) =>
-        res.render("series", {
-          url: req.originalUrl,
-          name: req.params.seriesName,
-          data,
-        })
-     ).catch(() => next(createError(404)));
+  .get(loadSeries, (req, res, next) => {
+    const { series } = req._data;
+    res.render("series", {
+      url: req.originalUrl,
+      name: series.name,
+      measurements: series.measurements,
+    });
   })
   // POST: append to the file
   .post(async (req, res, next) => {
@@ -119,6 +116,23 @@ function loadCollection(req, res, next) {
         collection: {
           name: collectionName,
           seriesNames: names.map((name) => path.basename(name, '.csv')),
+        }
+      };
+      next();
+    }).catch(() => next(createError(404)));
+}
+
+function loadSeries(req, res, next) {
+  const filename = nameToPath(req.params.collectionName, req.params.seriesName);
+  fsPromises.readFile(filename)
+    .then((data) => {
+      req._data = {
+        series: {
+          name: req.params.seriesName,
+          measurements: csvParse.parse(data, {
+            columns: true,
+            ltrim: true
+          }) || [],
         }
       };
       next();
