@@ -19,20 +19,16 @@ app.route('/')
   .post(async (req, res, next) => {
     const [collectionName, dirName] = newCollection();
     await fsPromises.mkdir(dirName);
-    res.redirect(collectionUrl(collectionUrl));
+    res.redirect(collectionUrl(collectionName));
   });
 
 app.route('/collection/:collectionName')
-  // GET: Show collection page
-  .get((req, res, next) => {
-    const dirname = nameToPath(req.params.collectionName);
-    fsPromises.readdir(dirname)
-      .then((names) =>
-        res.render("collection", {
-          collectionUrl: collectionUrl(req.params.collectionName),
-          seriesNames: names.map((name) => path.basename(name, '.csv')),
-        })
-      ).catch(() => next(createError(404)));
+  .get(loadCollection, (req, res, next) => {
+    const collection = req._data;
+    res.render("collection", {
+      collectionUrl: collectionUrl(collection.name),
+      seriesNames: collection.seriesNames,
+    });
   })
   // POST Create a new time-series
   .post(async (req, res, next) => {
@@ -111,6 +107,19 @@ function collectionUrl(collectionName) {
 
 function ts() {
    return Math.round(Date.now()/1000);
+}
+
+function loadCollection(req, res, next) {
+  const collectionName = req.params.collectionName;
+  const dirname = nameToPath(collectionName);
+  fsPromises.readdir(dirname)
+    .then((names) => {
+      req._data = {
+        name: collectionName,
+        seriesNames: names.map((name) => path.basename(name, '.csv')),
+      };
+      next();
+    }).catch(() => next(createError(404)));
 }
 
 module.exports = app;
