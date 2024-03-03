@@ -3,6 +3,7 @@ const createError = require('http-errors');
 const app = express();
 const fsPromises = require('fs/promises');
 const path = require('path');
+const csvParse = require('csv-parse/sync');
 
 app.use("/collection", express.static("user-data/time-series",{
    index: false, // don't serve index.html
@@ -24,7 +25,7 @@ app.route('/')
 
 app.route('/collection/:collectionName')
   .get(loadCollection, (req, res, next) => {
-    const collection = req._data;
+    const { collection } = req._data;
     res.render("collection", {
       collectionUrl: collectionUrl(collection.name),
       seriesNames: collection.seriesNames,
@@ -115,8 +116,10 @@ function loadCollection(req, res, next) {
   fsPromises.readdir(dirname)
     .then((names) => {
       req._data = {
-        name: collectionName,
-        seriesNames: names.map((name) => path.basename(name, '.csv')),
+        collection: {
+          name: collectionName,
+          seriesNames: names.map((name) => path.basename(name, '.csv')),
+        }
       };
       next();
     }).catch(() => next(createError(404)));
