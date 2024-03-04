@@ -1,66 +1,50 @@
 const express = require('express');
 const createError = require('http-errors');
-const app = express();
+const api = express.Router();
 const fsPromises = require('fs/promises');
 const path = require('path');
 const csvParse = require('csv-parse/sync');
-const apiRoute = require('./timeseries_api');
 
-app.use("/collection", express.static("user-data/time-series",{
-   index: false, // don't serve index.html
-   redirect: false, // don't redirect to add slash if target is directory
-}));
-app.param('collectionName', safeParamValidator)
-app.param('seriesName', safeParamValidator)
-app.route('/')
-   // GET: Show the form to create a new file
-  .get((req, res, next) => {
-    res.render('collection-create');
-  })
-  // POST Create a new directory
-  .post(async (req, res, next) => {
+api.param('collectionName', safeParamValidator)
+api.param('seriesName', safeParamValidator)
+// POST Create a new directory
+api.post('/collection', async (req, res, next) => {
+    console.log("new collection");
     const [collectionName, dirName] = newCollection();
     await fsPromises.mkdir(dirName);
-    res.redirect(collectionUrl(collectionName));
+    res.json({name: collectionName, series: []});
   });
 
-app.route('/collection/:collectionName')
+api.route('/collection/:collectionName')
   .get(loadCollection, (req, res, next) => {
     const { collection } = req._data;
-    res.render("collection", {
-      collectionUrl: collectionUrl(collection.name),
+    res.json({
+      name: collection.name,
       seriesNames: collection.seriesNames,
     });
-  })
+  });
+
+api.route('/collection/:collectionName/:seriesName')
+  // GET: view a series
+  .get(loadSeriesMiddleware, respondWithSeries)
   // POST Create a new time-series
   .post(async (req, res, next) => {
     const collectionName = req.params.collectionName;
-    const seriesName = makeSafeName(req.body.newSeriesName);
+    const seriesName = req.params.seriesName;
     const filename = nameToPath(collectionName, seriesName);
     await writeRecord(filename, ["timestamp", "value"]);
-    res.redirect(seriesUrl(collectionName, seriesName));
-  });
-
-app.route('/collection/:collectionName/:seriesName')
-  // GET: view a series
-  .get(loadSeries, (req, res, next) => {
-    const { series } = req._data;
-    res.render("series", {
-      url: req.originalUrl,
-      name: series.name,
-      measurements: series.measurements,
-    });
-  })
-  // POST: append to the file
-  .post(async (req, res, next) => {
+    next();
+  }, loadSeriesMiddleware, respondWithSeries);
+  
+// POST: append to the file
+api.post('/collection/:collectionName/:seriesName/record', 
+  async (req, res, next) => {
     const valueStr = req.body?.value;
     const value = parseFloat(valueStr, 10);
     const filename = nameToPath(req.params.collectionName, req.params.seriesName);
     await writeRecord(filename, [ts(), value]);
-    res.redirect(seriesUrl(req.params.collectionName, req.params.seriesName));
-  });
-
-app.use("/api", apiRoute);
+    next();
+  }, loadSeriesMiddleware, respondWithSeries)
 
 function newCollection() {
   const name = require('crypto').randomUUID()
@@ -83,7 +67,7 @@ function safeParamValidator(req, res, next, paramValue) {
   if (/^[0-9a-zA-Z-]+$/.test(paramValue)) {
     next();
   } else {
-    next(createError(404));
+    error(res, 404, paramValue + " is invalid; names must be composed of numbers, letters and dashes only");
   }
 }
 
@@ -122,24 +106,40 @@ function loadCollection(req, res, next) {
         }
       };
       next();
-    }).catch(() => next(createError(404)));
+    }).catch(() => error(res, 404, "collection not found"));
 }
 
-function loadSeries(req, res, next) {
-  const filename = nameToPath(req.params.collectionName, req.params.seriesName);
-  fsPromises.readFile(filename)
-    .then((data) => {
-      req._data = {
-        series: {
-          name: req.params.seriesName,
-          measurements: csvParse.parse(data, {
-            columns: true,
-            ltrim: true
-          }) || [],
-        }
-      };
+function loadSeriesMiddleware(req, res, next) {
+  loadSeries(req.params.collectionName, req.params.seriesName)
+    .then((series) => {
+      req._data = { series };
       next();
-    }).catch(() => next(createError(404)));
+    }).catch((err) => console.log(err) && error(res, 404, `series (${req.params.seriesName}) not found`));
 }
 
-module.exports = app;
+function respondWithSeries(req, res, next) {
+  const { series } = req._data;
+  res.json({
+    name: series.name,
+    measurements: series.measurements,
+  });
+}
+
+function loadSeries(collectionName, seriesName) {
+  const filename = nameToPath(collectionName, seriesName);
+  console.log("loading series from", filename);
+  return fsPromises.readFile(filename)
+    .then((seriesCsv) => ({
+      name: seriesName,
+      measurements: csvParse.parse(seriesCsv, {
+        columns: true,
+        ltrim: true
+      }) || [],
+    }));
+}
+
+function error(res, code, message) {
+  res.status(code).json({error: message});
+}
+
+module.exports = api;
