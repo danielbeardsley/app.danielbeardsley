@@ -32,6 +32,11 @@ api.route('/collection/:collectionName/:seriesName')
     const collectionName = req.params.collectionName;
     const seriesName = req.params.seriesName;
     const filename = nameToPath(collectionName, seriesName);
+    const exists = await loadSeries(req.params.collectionName, req.params.seriesName)
+    .then(() => true, () => false);
+    if (exists) {
+      return error(res, 409, `series (${seriesName}) already exists`);
+    }
     await writeRecord(filename, ["timestamp", "value"]);
     next();
   }, loadSeriesMiddleware, respondWithSeries);
