@@ -4,6 +4,7 @@ const api = express.Router();
 const fsPromises = require('fs/promises');
 const path = require('path');
 const csvParse = require('csv-parse/sync');
+const csvStringify = require('csv-stringify/sync');
 
 api.param('collectionName', safeParamValidator)
 api.param('seriesName', safeParamValidator)
@@ -65,7 +66,8 @@ function nameToPath(collectionName, seriesName) {
 }
 
 function writeRecord(filename, values) {
-   return fsPromises.appendFile(filename, values.join(", ") + "\n");
+   const csvLine = csvStringify(values);
+   return fsPromises.appendFile(filename, csvLine);
 }
 
 function safeParamValidator(req, res, next, paramValue) {
