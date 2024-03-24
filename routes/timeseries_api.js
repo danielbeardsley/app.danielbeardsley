@@ -16,7 +16,7 @@ api.post('/collection', async (req, res, next) => {
   });
 
 api.route('/collection/:collectionName')
-  .get(loadCollection, (req, res, next) => {
+  .get(loadCollectionMiddleware, (req, res, next) => {
     const { collection } = req._data;
     res.json({
       name: collection.name,
@@ -99,7 +99,7 @@ function ts() {
    return Math.round(Date.now()/1000);
 }
 
-function loadCollection(req, res, next) {
+function loadCollectionMiddleware(req, res, next) {
   const collectionName = req.params.collectionName;
   const dirname = nameToPath(collectionName);
   fsPromises.readdir(dirname)
