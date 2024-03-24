@@ -76,23 +76,11 @@ function safeParamValidator(req, res, next, paramValue) {
   }
 }
 
-function makeSafeName(name) {
-  return name.replace(/[^0-9a-zA-Z-]+/g,'-');
-}
-
 async function tailSeries(filename, res) {
    const data = await fsPromises.readFile(filename);
    res.type("text/plain");
    res.send(data);
    res.end();
-}
-
-function seriesUrl(collectionName, seriesName) {
-  return `${app.mountpath}/collection/${collectionName}/${seriesName}`;
-}
-
-function collectionUrl(collectionName) {
-  return `${app.mountpath}/collection/${collectionName}`;
 }
 
 function ts() {
