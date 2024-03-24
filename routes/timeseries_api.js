@@ -78,13 +78,6 @@ function safeParamValidator(req, res, next, paramValue) {
   }
 }
 
-async function tailSeries(filename, res) {
-   const data = await fsPromises.readFile(filename);
-   res.type("text/plain");
-   res.send(data);
-   res.end();
-}
-
 function ts() {
    return Math.round(Date.now()/1000);
 }
