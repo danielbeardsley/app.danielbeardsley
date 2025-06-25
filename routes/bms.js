@@ -1,27 +1,29 @@
 const express = require('express');
 const api = express.Router();
 
-const SECRET = process.env.BMS_UPDATE_SECRET;
+const bmsAPIDest = 'http://127.0.0.1:1235'
 
-let currentBMSValues = {};
+const currentBMSInfo = {
+   data: {},
+   lastFetch: 0,
+};
 
-// POST: set the current values
-api.post('/current', validationMiddleware, async (req, res, next) => {
-  const json = req.body;
-  currentBMSValues = json;
-  res.end();
-});
+const RESPONSE_STALE_TIME_MS = 1000;
 
-// GET: Get the current values
 api.get('/current', async (req, res, next) => {
-  res.json(currentBMSValues);
+   if (Date.now() - currentBMSInfo.lastFetch > RESPONSE_STALE_TIME_MS) {
+      const reponse = fetch(bmsAPIDest + "/current", {
+         signal: AbortSignal.timeout(5000)
+      });
+      currentBMSInfo.lastFetch = Date.now();
+      try {
+         currentBMSInfo.data = await (await reponse).json();
+      } catch (err) {
+         console.error("Error fetching BMS data:", err);
+         return res.status(503).json({ error: "Failed to fetch BMS data" });
+      }
+   }
+   res.status(200).json(currentBMSInfo.data);
 });
-
-function validationMiddleware(req, res, next) {
-  if (req.get('authorization') !== SECRET) {
-    res.sendStatus(401);
-  }
-  next();
-}
 
 module.exports = api;
