@@ -6,6 +6,7 @@ const logger = require('morgan');
 const timeSeriesApp = require('./routes/timeseries');
 const htmlBytesRouter = require('./routes/html-bytes');
 const bmsRouter = require('./routes/bms');
+const bushRoadApp = require('./routes/bush-road');
 
 const app = express();
 
@@ -25,6 +26,7 @@ app.use(express.static(path.join(__dirname, 'public'), {
    redirect: false, // don't redirect to add slash if target is directory
 }));
 
+app.use('/bush-road', bushRoadApp);
 app.use('/timeseries', timeSeriesApp);
 app.use('/html-bytes', htmlBytesRouter);
 app.use('/bms', bmsRouter);
