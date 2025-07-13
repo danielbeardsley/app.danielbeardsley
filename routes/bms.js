@@ -10,6 +10,14 @@ const currentBMSInfo = {
 
 const RESPONSE_STALE_TIME_MS = 1000;
 
+api.use((req, res, next) => {
+   const origin = req.get('origin');
+   if (origin && origin.match(/^https?:\/\/localhost($|:)/)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+   }
+   next();
+});
+
 api.get('/current', async (req, res, next) => {
    if (Date.now() - currentBMSInfo.lastFetch > RESPONSE_STALE_TIME_MS) {
       const reponse = fetch(bmsAPIDest + "/current", {
