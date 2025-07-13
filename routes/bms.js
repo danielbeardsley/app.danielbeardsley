@@ -1,5 +1,6 @@
 const express = require('express');
 const api = express.Router();
+const path = require('path');
 
 const bmsAPIDest = 'http://127.0.0.1:1235'
 
@@ -33,5 +34,10 @@ api.get('/current', async (req, res, next) => {
    }
    res.status(200).json(currentBMSInfo.data);
 });
+
+api.use(express.static(path.join(__dirname, 'bms/'), {
+   index: ['index.html'], // serve index.html
+   redirect: true, // redirect to add slash if target is directory
+}));
 
 module.exports = api;
