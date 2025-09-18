@@ -24,7 +24,8 @@ api.use((req, res, next) => {
 
 api.get('/current', async (req, res, next) => {
    if (Date.now() - currentBMSInfo.lastFetch > RESPONSE_STALE_TIME_MS) {
-      const reponse = fetch(bmsAPIDest + "/current", {
+      const params = url.parse(req.url).query;
+      const reponse = fetch(bmsAPIDest + "/current?" + params , {
          signal: AbortSignal.timeout(5000)
       });
       currentBMSInfo.lastFetch = Date.now();
