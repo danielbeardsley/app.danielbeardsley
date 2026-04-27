@@ -29,7 +29,7 @@
   .scenario-headers th { font-size: 0.85rem; color: #222; text-transform: none; text-align: center; }
   .scenario-headers .buy-h { color: #2563eb; }
   .scenario-headers .finance-h { color: #dc2626; }
-  .table-wrap { max-height: 600px; overflow-y: auto; border: 1px solid #ddd; border-radius: 6px; }
+  .table-wrap { border: 1px solid #ddd; border-radius: 6px; overflow: hidden; }
   .divider { border-left: 2px solid #ccc; }
   .horizon-row td { background: #fff7d6; font-weight: 600; }
 </style>
@@ -78,6 +78,7 @@
     <div class="stat"><span class="label">Savings interest / mo</span><span class="value" id="buy-avg-sav"></span></div>
     <div class="stat total"><span class="label">Net cost / mo</span><span class="value" id="buy-net"></span></div>
     <div class="stat"><span class="label">Net worth at horizon</span><span class="value" id="buy-nw"></span></div>
+    <div class="stat"><span class="label">Net worth advantage / mo</span><span class="value" id="buy-adv"></span></div>
   </div>
   <div class="card finance">
     <h3>Finance &mdash; averages over horizon</h3>
@@ -87,6 +88,7 @@
     <div class="stat"><span class="label">Savings interest / mo</span><span class="value" id="fin-avg-sav"></span></div>
     <div class="stat total"><span class="label">Net cost / mo</span><span class="value" id="fin-net"></span></div>
     <div class="stat"><span class="label">Net worth at horizon</span><span class="value" id="fin-nw"></span></div>
+    <div class="stat"><span class="label">Net worth advantage / mo</span><span class="value" id="fin-adv"></span></div>
   </div>
 </div>
 
@@ -225,6 +227,10 @@ function render() {
   document.getElementById('fin-nw').textContent = fmt(finRows[h - 1].netWorth);
 
   const delta = finRows[h - 1].netWorth - buyRows[h - 1].netWorth;
+  const advPerMo = delta / h;
+  document.getElementById('buy-adv').textContent = fmt(-advPerMo);
+  document.getElementById('fin-adv').textContent = fmt(advPerMo);
+
   const winner = delta >= 0 ? 'Financing' : 'Buying outright';
   document.getElementById('verdict').innerHTML =
     `<strong>${winner}</strong> wins by ${fmt(Math.abs(delta))} of net worth at month ${h}` +
