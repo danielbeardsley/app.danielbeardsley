@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Buy vs. Finance: Car Comparison</title>
+<style>
+  body { font-family: -apple-system, system-ui, sans-serif; max-width: 1200px; margin: 0 auto; padding: 1.5rem; color: #222; }
+  h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+  .subtitle { color: #666; margin-top: 0; margin-bottom: 1.5rem; font-size: 0.9rem; }
+  .subtitle code { background: #eee; padding: 1px 4px; border-radius: 3px; font-size: 0.85rem; }
+  .inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.75rem; margin-bottom: 1.5rem; padding: 1rem; background: #f5f5f5; border-radius: 6px; }
+  .input-group { display: flex; flex-direction: column; }
+  .input-group label { font-size: 0.8rem; color: #555; margin-bottom: 0.25rem; }
+  .input-group input { padding: 0.4rem; font-size: 0.95rem; border: 1px solid #ccc; border-radius: 4px; }
+  .summary { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+  .card { padding: 1rem 1.25rem; border: 1px solid #ddd; border-radius: 6px; }
+  .card h3 { margin-top: 0; margin-bottom: 0.75rem; font-size: 1rem; }
+  .card.buy { border-left: 4px solid #2563eb; }
+  .card.finance { border-left: 4px solid #dc2626; }
+  .stat { display: flex; justify-content: space-between; padding: 0.2rem 0; font-size: 0.9rem; }
+  .stat .label { color: #555; }
+  .stat .value { font-variant-numeric: tabular-nums; }
+  .stat.total { border-top: 1px solid #eee; margin-top: 0.4rem; padding-top: 0.4rem; font-weight: 600; }
+  .verdict { padding: 0.75rem 1rem; background: #eef6ff; border-radius: 6px; margin-bottom: 1.5rem; font-size: 0.95rem; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; font-variant-numeric: tabular-nums; }
+  th, td { padding: 0.3rem 0.5rem; text-align: right; border-bottom: 1px solid #eee; }
+  th { background: #f5f5f5; font-weight: 600; font-size: 0.72rem; text-transform: uppercase; color: #555; position: sticky; top: 0; z-index: 1; }
+  td.month, th.month { text-align: left; }
+  .scenario-headers th { font-size: 0.85rem; color: #222; text-transform: none; text-align: center; }
+  .scenario-headers .buy-h { color: #2563eb; }
+  .scenario-headers .finance-h { color: #dc2626; }
+  .table-wrap { border: 1px solid #ddd; border-radius: 6px; overflow: hidden; }
+  .divider { border-left: 2px solid #ccc; }
+  .horizon-row td { background: #fff7d6; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>Buy vs. Finance: Car Comparison</h1>
+<p class="subtitle">Both scenarios start with <code>CarPrice + TotalLoanInterest</code> in cash. Finance withdraws monthly loan payments from the invested pool; buy outright spends CarPrice up front. Whatever's left in the pool earns ROI.</p>
+
+<div class="inputs">
+  <div class="input-group">
+    <label for="carPrice">Car Price ($)</label>
+    <input id="carPrice" type="number" value="30000" step="500" min="0">
+  </div>
+  <div class="input-group">
+    <label for="downPayment">Down Payment ($)</label>
+    <input id="downPayment" type="number" value="5000" step="500" min="0">
+  </div>
+  <div class="input-group">
+    <label for="apr">Loan APR (% / yr)</label>
+    <input id="apr" type="number" value="6.5" step="0.1" min="0">
+  </div>
+  <div class="input-group">
+    <label for="loanTerm">Loan Term (months)</label>
+    <input id="loanTerm" type="number" value="60" step="6" min="1">
+  </div>
+  <div class="input-group">
+    <label for="depreciation">Depreciation (% / yr)</label>
+    <input id="depreciation" type="number" value="15" step="1" min="0" max="100">
+  </div>
+  <div class="input-group">
+    <label for="roi">Investment ROI (% / yr)</label>
+    <input id="roi" type="number" value="7" step="0.5">
+  </div>
+  <div class="input-group">
+    <label for="horizon">Horizon (months)</label>
+    <input id="horizon" type="number" value="60" step="6" min="1">
+  </div>
+</div>
+
+<div class="summary">
+  <div class="card buy">
+    <h3>Buy Outright &mdash; averages over horizon</h3>
+    <div class="stat"><span class="label">Monthly payment</span><span class="value" id="buy-avg-payment"></span></div>
+    <div class="stat"><span class="label">Depreciation / mo</span><span class="value" id="buy-avg-dep"></span></div>
+    <div class="stat"><span class="label">Loan interest / mo</span><span class="value" id="buy-avg-int"></span></div>
+    <div class="stat"><span class="label">Savings interest / mo</span><span class="value" id="buy-avg-sav"></span></div>
+    <div class="stat total"><span class="label">Net cost / mo</span><span class="value" id="buy-net"></span></div>
+    <div class="stat"><span class="label">Net worth at horizon</span><span class="value" id="buy-nw"></span></div>
+    <div class="stat"><span class="label">Net worth advantage / mo</span><span class="value" id="buy-adv"></span></div>
+  </div>
+  <div class="card finance">
+    <h3>Finance &mdash; averages over horizon</h3>
+    <div class="stat"><span class="label">Monthly payment</span><span class="value" id="fin-avg-payment"></span></div>
+    <div class="stat"><span class="label">Depreciation / mo</span><span class="value" id="fin-avg-dep"></span></div>
+    <div class="stat"><span class="label">Loan interest / mo</span><span class="value" id="fin-avg-int"></span></div>
+    <div class="stat"><span class="label">Savings interest / mo</span><span class="value" id="fin-avg-sav"></span></div>
+    <div class="stat total"><span class="label">Net cost / mo</span><span class="value" id="fin-net"></span></div>
+    <div class="stat"><span class="label">Net worth at horizon</span><span class="value" id="fin-nw"></span></div>
+    <div class="stat"><span class="label">Net worth advantage / mo</span><span class="value" id="fin-adv"></span></div>
+  </div>
+</div>
+
+<div class="verdict" id="verdict"></div>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr class="scenario-headers">
+        <th class="month" rowspan="2">Mo</th>
+        <th class="buy-h" colspan="5">Buy Outright</th>
+        <th class="finance-h divider" colspan="5">Finance</th>
+      </tr>
+      <tr>
+        <th>Payment</th><th>Depreciation</th><th>Loan Int.</th><th>Savings Int.</th><th>Net Worth</th>
+        <th class="divider">Payment</th><th>Depreciation</th><th>Loan Int.</th><th>Savings Int.</th><th>Net Worth</th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+</div>
+
+<script>
+const fmt = (n) => {
+  const sign = n < 0 ? '-' : '';
+  return sign + '$' + Math.abs(n).toLocaleString('en-US', { maximumFractionDigits: 0 });
+};
+
+function calcMonthlyPayment(principal, monthlyRate, n) {
+  if (principal <= 0 || n <= 0) return 0;
+  if (monthlyRate === 0) return principal / n;
+  const r = monthlyRate;
+  return principal * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+}
+
+function simulate(inputs) {
+  const { carPrice, downPayment, apr, loanTerm, depreciation, roi, horizon } = inputs;
+  const loanAmount = Math.max(0, carPrice - downPayment);
+  const monthlyRate = (apr / 100) / 12;
+  const monthlyPayment = calcMonthlyPayment(loanAmount, monthlyRate, loanTerm);
+  const totalLoanInterest = monthlyPayment * loanTerm - loanAmount;
+  const depMonthly = Math.pow(1 - depreciation / 100, 1 / 12);
+  const roiMonthly = Math.pow(1 + roi / 100, 1 / 12);
+  const poolStart = carPrice + totalLoanInterest;
+
+  const months = Math.max(horizon, loanTerm);
+
+  // Buy outright
+  const buyRows = [];
+  let bPool = poolStart - carPrice;
+  let bCar = carPrice;
+  for (let m = 1; m <= months; m++) {
+    const sav = bPool * (roiMonthly - 1);
+    bPool *= roiMonthly;
+    const dep = bCar * (1 - depMonthly);
+    bCar *= depMonthly;
+    buyRows.push({ payment: 0, depreciation: dep, loanInterest: 0, savingsInterest: sav, netWorth: bPool + bCar });
+  }
+
+  // Finance
+  const finRows = [];
+  let fPool = poolStart - downPayment;
+  let fCar = carPrice;
+  let fLoan = loanAmount;
+  for (let m = 1; m <= months; m++) {
+    const sav = fPool * (roiMonthly - 1);
+    fPool *= roiMonthly;
+    let pay = 0, loanInt = 0;
+    if (fLoan > 0.005) {
+      loanInt = fLoan * monthlyRate;
+      let principal = monthlyPayment - loanInt;
+      if (principal >= fLoan) {
+        principal = fLoan;
+        pay = principal + loanInt;
+      } else {
+        pay = monthlyPayment;
+      }
+      fLoan -= principal;
+      if (fLoan < 0.005) fLoan = 0;
+      fPool -= pay;
+    }
+    const dep = fCar * (1 - depMonthly);
+    fCar *= depMonthly;
+    finRows.push({ payment: pay, depreciation: dep, loanInterest: loanInt, savingsInterest: sav, netWorth: fPool + fCar - fLoan });
+  }
+
+  return { buyRows, finRows, monthlyPayment, totalLoanInterest, poolStart, monthsTable: months };
+}
+
+function avg(rows, key, n) {
+  let sum = 0;
+  for (let i = 0; i < n; i++) sum += rows[i][key];
+  return sum / n;
+}
+
+function render() {
+  const inputs = {
+    carPrice: +document.getElementById('carPrice').value,
+    downPayment: +document.getElementById('downPayment').value,
+    apr: +document.getElementById('apr').value,
+    loanTerm: Math.max(1, +document.getElementById('loanTerm').value | 0),
+    depreciation: +document.getElementById('depreciation').value,
+    roi: +document.getElementById('roi').value,
+    horizon: Math.max(1, +document.getElementById('horizon').value | 0),
+  };
+
+  const { buyRows, finRows, monthsTable } = simulate(inputs);
+  const h = Math.min(inputs.horizon, monthsTable);
+
+  const buy = {
+    pay: avg(buyRows, 'payment', h),
+    dep: avg(buyRows, 'depreciation', h),
+    int: avg(buyRows, 'loanInterest', h),
+    sav: avg(buyRows, 'savingsInterest', h),
+  };
+  const fin = {
+    pay: avg(finRows, 'payment', h),
+    dep: avg(finRows, 'depreciation', h),
+    int: avg(finRows, 'loanInterest', h),
+    sav: avg(finRows, 'savingsInterest', h),
+  };
+  buy.net = buy.pay + buy.dep + buy.int - buy.sav;
+  fin.net = fin.pay + fin.dep + fin.int - fin.sav;
+
+  document.getElementById('buy-avg-payment').textContent = fmt(buy.pay);
+  document.getElementById('buy-avg-dep').textContent = fmt(buy.dep);
+  document.getElementById('buy-avg-int').textContent = fmt(buy.int);
+  document.getElementById('buy-avg-sav').textContent = fmt(buy.sav);
+  document.getElementById('buy-net').textContent = fmt(buy.net);
+  document.getElementById('buy-nw').textContent = fmt(buyRows[h - 1].netWorth);
+  document.getElementById('fin-avg-payment').textContent = fmt(fin.pay);
+  document.getElementById('fin-avg-dep').textContent = fmt(fin.dep);
+  document.getElementById('fin-avg-int').textContent = fmt(fin.int);
+  document.getElementById('fin-avg-sav').textContent = fmt(fin.sav);
+  document.getElementById('fin-net').textContent = fmt(fin.net);
+  document.getElementById('fin-nw').textContent = fmt(finRows[h - 1].netWorth);
+
+  const delta = finRows[h - 1].netWorth - buyRows[h - 1].netWorth;
+  const advPerMo = delta / h;
+  document.getElementById('buy-adv').textContent = fmt(-advPerMo);
+  document.getElementById('fin-adv').textContent = fmt(advPerMo);
+
+  const winner = delta >= 0 ? 'Financing' : 'Buying outright';
+  document.getElementById('verdict').innerHTML =
+    `<strong>${winner}</strong> wins by ${fmt(Math.abs(delta))} of net worth at month ${h}` +
+    ` (avg net cost: buy ${fmt(buy.net)}/mo vs. finance ${fmt(fin.net)}/mo).`;
+
+  const rows = document.getElementById('rows');
+  let html = '';
+  for (let i = 0; i < monthsTable; i++) {
+    const b = buyRows[i], f = finRows[i];
+    const rowClass = (i + 1 === h) ? ' class="horizon-row"' : '';
+    html += `<tr${rowClass}>` +
+      `<td class="month">${i + 1}</td>` +
+      `<td>${fmt(b.payment)}</td><td>${fmt(b.depreciation)}</td><td>${fmt(b.loanInterest)}</td><td>${fmt(b.savingsInterest)}</td><td>${fmt(b.netWorth)}</td>` +
+      `<td class="divider">${fmt(f.payment)}</td><td>${fmt(f.depreciation)}</td><td>${fmt(f.loanInterest)}</td><td>${fmt(f.savingsInterest)}</td><td>${fmt(f.netWorth)}</td>` +
+      `</tr>`;
+  }
+  rows.innerHTML = html;
+}
+
+const INPUT_IDS = ['carPrice', 'downPayment', 'apr', 'loanTerm', 'depreciation', 'roi', 'horizon'];
+
+function loadFromHash() {
+  const hash = location.hash.startsWith('#') ? location.hash.slice(1) : location.hash;
+  if (!hash) return;
+  const params = new URLSearchParams(hash);
+  for (const id of INPUT_IDS) {
+    const v = params.get(id);
+    if (v !== null && v !== '') document.getElementById(id).value = v;
+  }
+}
+
+function saveToHash() {
+  const params = new URLSearchParams();
+  for (const id of INPUT_IDS) params.set(id, document.getElementById(id).value);
+  history.replaceState(null, '', '#' + params.toString());
+}
+
+loadFromHash();
+document.querySelectorAll('input').forEach(el => el.addEventListener('input', () => { saveToHash(); render(); }));
+render();
+</script>
+</body>
+</html>
