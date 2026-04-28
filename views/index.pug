@@ -1,10 +1,19 @@
 extends layout
 
 block content
-  h1 Hobby projects of
-    a(href="https://www.danielbeardsley.com") Daniel Beardsley
-  ul
-    li
-      a(href="/timeseries") Time Series
-    li
-      a(href="/experiments/auto-financing-comparison/index.html") Buy-vs-Finance Car Comparison
+  main.home
+    header.home__header
+      h1.home__title Hobby projects
+      p.home__byline
+        | by
+        =' '
+        a.home__author(href="https://www.danielbeardsley.com") Daniel Beardsley
+    ul.home__projects
+      li.home__project
+        a.home__link(href="/timeseries")
+          span.home__link-title Time Series
+          span.home__link-desc Store and view named series of timestamped values.
+      li.home__project
+        a.home__link(href="/experiments/auto-financing-comparison/index.html")
+          span.home__link-title Buy-vs-Finance Car Comparison
+          span.home__link-desc Compare paying cash for a car against financing and investing the difference.
