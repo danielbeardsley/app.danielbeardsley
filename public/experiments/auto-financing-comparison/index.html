@@ -250,7 +250,26 @@ function render() {
   rows.innerHTML = html;
 }
 
-document.querySelectorAll('input').forEach(el => el.addEventListener('input', render));
+const INPUT_IDS = ['carPrice', 'downPayment', 'apr', 'loanTerm', 'depreciation', 'roi', 'horizon'];
+
+function loadFromHash() {
+  const hash = location.hash.startsWith('#') ? location.hash.slice(1) : location.hash;
+  if (!hash) return;
+  const params = new URLSearchParams(hash);
+  for (const id of INPUT_IDS) {
+    const v = params.get(id);
+    if (v !== null && v !== '') document.getElementById(id).value = v;
+  }
+}
+
+function saveToHash() {
+  const params = new URLSearchParams();
+  for (const id of INPUT_IDS) params.set(id, document.getElementById(id).value);
+  history.replaceState(null, '', '#' + params.toString());
+}
+
+loadFromHash();
+document.querySelectorAll('input').forEach(el => el.addEventListener('input', () => { saveToHash(); render(); }));
 render();
 </script>
 </body>
