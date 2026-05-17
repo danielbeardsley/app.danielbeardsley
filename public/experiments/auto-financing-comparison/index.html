@@ -12,11 +12,12 @@
   .input-group { display: flex; flex-direction: column; }
   .input-group label { font-size: 0.8rem; color: #555; margin-bottom: 0.25rem; }
   .input-group input { padding: 0.4rem; font-size: 0.95rem; border: 1px solid #ccc; border-radius: 4px; }
-  .summary { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+  .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
   .card { padding: 1rem 1.25rem; border: 1px solid #ddd; border-radius: 6px; }
   .card h3 { margin-top: 0; margin-bottom: 0.75rem; font-size: 1rem; }
   .card.buy { border-left: 4px solid #2563eb; }
   .card.finance { border-left: 4px solid #dc2626; }
+  .card.keep { border-left: 4px solid #16a34a; }
   .stat { display: flex; justify-content: space-between; padding: 0.2rem 0; font-size: 0.9rem; }
   .stat .label { color: #555; }
   .stat .value { font-variant-numeric: tabular-nums; }
@@ -29,14 +30,15 @@
   .scenario-headers th { font-size: 0.85rem; color: #222; text-transform: none; text-align: center; }
   .scenario-headers .buy-h { color: #2563eb; }
   .scenario-headers .finance-h { color: #dc2626; }
-  .table-wrap { border: 1px solid #ddd; border-radius: 6px; overflow: hidden; }
+  .scenario-headers .keep-h { color: #16a34a; }
+  .table-wrap { border: 1px solid #ddd; border-radius: 6px; overflow-x: auto; }
   .divider { border-left: 2px solid #ccc; }
   .horizon-row td { background: #fff7d6; font-weight: 600; }
 </style>
 </head>
 <body>
 <h1>Buy vs. Finance: Car Comparison</h1>
-<p class="subtitle">Both scenarios start with <code>CarPrice + TotalLoanInterest</code> in cash. Finance withdraws monthly loan payments from the invested pool; buy outright spends CarPrice up front. Whatever's left in the pool earns ROI.</p>
+<p class="subtitle">All three scenarios start with the same net worth (<code>CarPrice + TotalLoanInterest + ExistingCarValue</code>). Buy/Finance sell the existing car for cash; Keep holds onto it and pays the monthly fuel cost difference out of the invested pool. Whatever's left in the pool earns ROI.</p>
 
 <div class="inputs">
   <div class="input-group">
@@ -67,6 +69,14 @@
     <label for="horizon">Horizon (months)</label>
     <input id="horizon" type="number" value="60" min="1">
   </div>
+  <div class="input-group">
+    <label for="existingValue">Existing Car Value ($)</label>
+    <input id="existingValue" type="number" value="15000" min="0">
+  </div>
+  <div class="input-group">
+    <label for="fuelDiff">Fuel Cost Diff ($ / mo)</label>
+    <input id="fuelDiff" type="number" value="100" min="0">
+  </div>
 </div>
 
 <div class="summary">
@@ -90,6 +100,16 @@
     <div class="stat"><span class="label">Net worth at horizon</span><span class="value" id="fin-nw"></span></div>
     <div class="stat"><span class="label">Net worth advantage / mo</span><span class="value" id="fin-adv"></span></div>
   </div>
+  <div class="card keep">
+    <h3>Keep Existing &mdash; averages over horizon</h3>
+    <div class="stat"><span class="label">Fuel cost / mo</span><span class="value" id="keep-avg-payment"></span></div>
+    <div class="stat"><span class="label">Depreciation / mo</span><span class="value" id="keep-avg-dep"></span></div>
+    <div class="stat"><span class="label">Loan interest / mo</span><span class="value" id="keep-avg-int"></span></div>
+    <div class="stat"><span class="label">Savings interest / mo</span><span class="value" id="keep-avg-sav"></span></div>
+    <div class="stat total"><span class="label">Net cost / mo</span><span class="value" id="keep-net"></span></div>
+    <div class="stat"><span class="label">Net worth at horizon</span><span class="value" id="keep-nw"></span></div>
+    <div class="stat"><span class="label">Net worth advantage / mo</span><span class="value" id="keep-adv"></span></div>
+  </div>
 </div>
 
 <div class="verdict" id="verdict"></div>
@@ -101,10 +121,12 @@
         <th class="month" rowspan="2">Mo</th>
         <th class="buy-h" colspan="5">Buy Outright</th>
         <th class="finance-h divider" colspan="5">Finance</th>
+        <th class="keep-h divider" colspan="5">Keep Existing</th>
       </tr>
       <tr>
         <th>Payment</th><th>Depreciation</th><th>Loan Int.</th><th>Savings Int.</th><th>Net Worth</th>
         <th class="divider">Payment</th><th>Depreciation</th><th>Loan Int.</th><th>Savings Int.</th><th>Net Worth</th>
+        <th class="divider">Fuel</th><th>Depreciation</th><th>Loan Int.</th><th>Savings Int.</th><th>Net Worth</th>
       </tr>
     </thead>
     <tbody id="rows"></tbody>
@@ -125,7 +147,7 @@ function calcMonthlyPayment(principal, monthlyRate, n) {
 }
 
 function simulate(inputs) {
-  const { carPrice, downPayment, apr, loanTerm, depreciation, roi, horizon } = inputs;
+  const { carPrice, downPayment, apr, loanTerm, depreciation, roi, horizon, existingValue, fuelDiff } = inputs;
   const loanAmount = Math.max(0, carPrice - downPayment);
   const monthlyRate = (apr / 100) / 12;
   const monthlyPayment = calcMonthlyPayment(loanAmount, monthlyRate, loanTerm);
@@ -136,9 +158,9 @@ function simulate(inputs) {
 
   const months = Math.max(horizon, loanTerm);
 
-  // Buy outright
+  // Buy outright — sells existing car, proceeds go into the pool
   const buyRows = [];
-  let bPool = poolStart - carPrice;
+  let bPool = poolStart - carPrice + existingValue;
   let bCar = carPrice;
   for (let m = 1; m <= months; m++) {
     const sav = bPool * (roiMonthly - 1);
@@ -148,9 +170,9 @@ function simulate(inputs) {
     buyRows.push({ payment: 0, depreciation: dep, loanInterest: 0, savingsInterest: sav, netWorth: bPool + bCar });
   }
 
-  // Finance
+  // Finance — sells existing car, proceeds go into the pool
   const finRows = [];
-  let fPool = poolStart - downPayment;
+  let fPool = poolStart - downPayment + existingValue;
   let fCar = carPrice;
   let fLoan = loanAmount;
   for (let m = 1; m <= months; m++) {
@@ -175,7 +197,20 @@ function simulate(inputs) {
     finRows.push({ payment: pay, depreciation: dep, loanInterest: loanInt, savingsInterest: sav, netWorth: fPool + fCar - fLoan });
   }
 
-  return { buyRows, finRows, monthlyPayment, totalLoanInterest, poolStart, monthsTable: months };
+  // Keep existing car — same starting pool, pays fuel cost diff each month
+  const keepRows = [];
+  let kPool = poolStart;
+  let kCar = existingValue;
+  for (let m = 1; m <= months; m++) {
+    const sav = kPool * (roiMonthly - 1);
+    kPool *= roiMonthly;
+    kPool -= fuelDiff;
+    const dep = kCar * (1 - depMonthly);
+    kCar *= depMonthly;
+    keepRows.push({ payment: fuelDiff, depreciation: dep, loanInterest: 0, savingsInterest: sav, netWorth: kPool + kCar });
+  }
+
+  return { buyRows, finRows, keepRows, monthlyPayment, totalLoanInterest, poolStart, monthsTable: months };
 }
 
 function avg(rows, key, n) {
@@ -193,64 +228,74 @@ function render() {
     depreciation: +document.getElementById('depreciation').value,
     roi: +document.getElementById('roi').value,
     horizon: Math.max(1, +document.getElementById('horizon').value | 0),
+    existingValue: +document.getElementById('existingValue').value,
+    fuelDiff: +document.getElementById('fuelDiff').value,
   };
 
-  const { buyRows, finRows, monthsTable } = simulate(inputs);
+  const { buyRows, finRows, keepRows, monthsTable } = simulate(inputs);
   const h = Math.min(inputs.horizon, monthsTable);
 
-  const buy = {
-    pay: avg(buyRows, 'payment', h),
-    dep: avg(buyRows, 'depreciation', h),
-    int: avg(buyRows, 'loanInterest', h),
-    sav: avg(buyRows, 'savingsInterest', h),
+  const summarize = (rows) => {
+    const s = {
+      pay: avg(rows, 'payment', h),
+      dep: avg(rows, 'depreciation', h),
+      int: avg(rows, 'loanInterest', h),
+      sav: avg(rows, 'savingsInterest', h),
+    };
+    s.net = s.pay + s.dep + s.int - s.sav;
+    return s;
   };
-  const fin = {
-    pay: avg(finRows, 'payment', h),
-    dep: avg(finRows, 'depreciation', h),
-    int: avg(finRows, 'loanInterest', h),
-    sav: avg(finRows, 'savingsInterest', h),
+  const buy = summarize(buyRows);
+  const fin = summarize(finRows);
+  const keep = summarize(keepRows);
+
+  const fill = (prefix, s, nw) => {
+    document.getElementById(`${prefix}-avg-payment`).textContent = fmt(s.pay);
+    document.getElementById(`${prefix}-avg-dep`).textContent = fmt(s.dep);
+    document.getElementById(`${prefix}-avg-int`).textContent = fmt(s.int);
+    document.getElementById(`${prefix}-avg-sav`).textContent = fmt(s.sav);
+    document.getElementById(`${prefix}-net`).textContent = fmt(s.net);
+    document.getElementById(`${prefix}-nw`).textContent = fmt(nw);
   };
-  buy.net = buy.pay + buy.dep + buy.int - buy.sav;
-  fin.net = fin.pay + fin.dep + fin.int - fin.sav;
+  const buyNW = buyRows[h - 1].netWorth;
+  const finNW = finRows[h - 1].netWorth;
+  const keepNW = keepRows[h - 1].netWorth;
+  fill('buy', buy, buyNW);
+  fill('fin', fin, finNW);
+  fill('keep', keep, keepNW);
 
-  document.getElementById('buy-avg-payment').textContent = fmt(buy.pay);
-  document.getElementById('buy-avg-dep').textContent = fmt(buy.dep);
-  document.getElementById('buy-avg-int').textContent = fmt(buy.int);
-  document.getElementById('buy-avg-sav').textContent = fmt(buy.sav);
-  document.getElementById('buy-net').textContent = fmt(buy.net);
-  document.getElementById('buy-nw').textContent = fmt(buyRows[h - 1].netWorth);
-  document.getElementById('fin-avg-payment').textContent = fmt(fin.pay);
-  document.getElementById('fin-avg-dep').textContent = fmt(fin.dep);
-  document.getElementById('fin-avg-int').textContent = fmt(fin.int);
-  document.getElementById('fin-avg-sav').textContent = fmt(fin.sav);
-  document.getElementById('fin-net').textContent = fmt(fin.net);
-  document.getElementById('fin-nw').textContent = fmt(finRows[h - 1].netWorth);
+  // Advantage / mo for each scenario: net worth vs. best of the other two.
+  const adv = (self, others) => (self - Math.max(...others)) / h;
+  document.getElementById('buy-adv').textContent = fmt(adv(buyNW, [finNW, keepNW]));
+  document.getElementById('fin-adv').textContent = fmt(adv(finNW, [buyNW, keepNW]));
+  document.getElementById('keep-adv').textContent = fmt(adv(keepNW, [buyNW, finNW]));
 
-  const delta = finRows[h - 1].netWorth - buyRows[h - 1].netWorth;
-  const advPerMo = delta / h;
-  document.getElementById('buy-adv').textContent = fmt(-advPerMo);
-  document.getElementById('fin-adv').textContent = fmt(advPerMo);
-
-  const winner = delta >= 0 ? 'Financing' : 'Buying outright';
+  const ranked = [
+    { name: 'Buying outright', nw: buyNW },
+    { name: 'Financing', nw: finNW },
+    { name: 'Keeping existing car', nw: keepNW },
+  ].sort((a, b) => b.nw - a.nw);
+  const margin = ranked[0].nw - ranked[1].nw;
   document.getElementById('verdict').innerHTML =
-    `<strong>${winner}</strong> wins by ${fmt(Math.abs(delta))} of net worth at month ${h}` +
-    ` (avg net cost: buy ${fmt(buy.net)}/mo vs. finance ${fmt(fin.net)}/mo).`;
+    `<strong>${ranked[0].name}</strong> wins by ${fmt(margin)} of net worth at month ${h} over ${ranked[1].name}` +
+    ` (net cost/mo: buy ${fmt(buy.net)}, finance ${fmt(fin.net)}, keep ${fmt(keep.net)}).`;
 
   const rows = document.getElementById('rows');
   let html = '';
   for (let i = 0; i < monthsTable; i++) {
-    const b = buyRows[i], f = finRows[i];
+    const b = buyRows[i], f = finRows[i], k = keepRows[i];
     const rowClass = (i + 1 === h) ? ' class="horizon-row"' : '';
     html += `<tr${rowClass}>` +
       `<td class="month">${i + 1}</td>` +
       `<td>${fmt(b.payment)}</td><td>${fmt(b.depreciation)}</td><td>${fmt(b.loanInterest)}</td><td>${fmt(b.savingsInterest)}</td><td>${fmt(b.netWorth)}</td>` +
       `<td class="divider">${fmt(f.payment)}</td><td>${fmt(f.depreciation)}</td><td>${fmt(f.loanInterest)}</td><td>${fmt(f.savingsInterest)}</td><td>${fmt(f.netWorth)}</td>` +
+      `<td class="divider">${fmt(k.payment)}</td><td>${fmt(k.depreciation)}</td><td>${fmt(k.loanInterest)}</td><td>${fmt(k.savingsInterest)}</td><td>${fmt(k.netWorth)}</td>` +
       `</tr>`;
   }
   rows.innerHTML = html;
 }
 
-const INPUT_IDS = ['carPrice', 'downPayment', 'apr', 'loanTerm', 'depreciation', 'roi', 'horizon'];
+const INPUT_IDS = ['carPrice', 'downPayment', 'apr', 'loanTerm', 'depreciation', 'roi', 'horizon', 'existingValue', 'fuelDiff'];
 
 function loadFromHash() {
   const hash = location.hash.startsWith('#') ? location.hash.slice(1) : location.hash;
