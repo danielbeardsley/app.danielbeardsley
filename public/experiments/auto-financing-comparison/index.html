@@ -12,6 +12,7 @@
   .input-group { display: flex; flex-direction: column; }
   .input-group label { font-size: 0.8rem; color: #555; margin-bottom: 0.25rem; }
   .input-group input { padding: 0.4rem; font-size: 0.95rem; border: 1px solid #ccc; border-radius: 4px; }
+  .input-group input[type="checkbox"] { padding: 0; border: none; width: 20px; height: 20px; margin-top: 0.4rem; align-self: flex-start; cursor: pointer; }
   .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
   .card { padding: 1rem 1.25rem; border: 1px solid #ddd; border-radius: 6px; }
   .card h3 { margin-top: 0; margin-bottom: 0.75rem; font-size: 1rem; }
@@ -38,7 +39,7 @@
 </head>
 <body>
 <h1>Buy vs. Finance: Car Comparison</h1>
-<p class="subtitle">All three scenarios start with the same net worth (<code>CarPrice + TotalLoanInterest + ExistingCarValue</code>). Buy/Finance sell the existing car for cash; Keep holds onto it and pays the monthly fuel cost difference out of the invested pool. Whatever's left in the pool earns ROI.</p>
+<p class="subtitle">All three scenarios start with the same net worth (<code>CarPrice + TotalLoanInterest + ExistingCarValue</code>). Buy/Finance sell the existing car for cash by default; tick &ldquo;Don't sell existing car&rdquo; to keep it as a second vehicle (adds new-car insurance + registration as monthly costs). Keep holds onto the car and pays the monthly fuel cost difference. Whatever's left in the pool earns ROI.</p>
 
 <div class="inputs">
   <div class="input-group">
@@ -76,6 +77,18 @@
   <div class="input-group">
     <label for="fuelDiff">Fuel Cost Diff ($ / mo)</label>
     <input id="fuelDiff" type="number" value="100" min="0">
+  </div>
+  <div class="input-group">
+    <label for="keepWhenBuying">Don't sell existing car</label>
+    <input id="keepWhenBuying" type="checkbox">
+  </div>
+  <div class="input-group">
+    <label for="newInsurance">New Car Insurance ($ / mo)</label>
+    <input id="newInsurance" type="number" value="100" min="0">
+  </div>
+  <div class="input-group">
+    <label for="newRegistration">New Car Registration ($ / mo)</label>
+    <input id="newRegistration" type="number" value="20" min="0">
   </div>
 </div>
 
@@ -147,7 +160,7 @@ function calcMonthlyPayment(principal, monthlyRate, n) {
 }
 
 function simulate(inputs) {
-  const { carPrice, downPayment, apr, loanTerm, depreciation, roi, horizon, existingValue, fuelDiff } = inputs;
+  const { carPrice, downPayment, apr, loanTerm, depreciation, roi, horizon, existingValue, fuelDiff, keepWhenBuying, newInsurance, newRegistration } = inputs;
   const loanAmount = Math.max(0, carPrice - downPayment);
   const monthlyRate = (apr / 100) / 12;
   const monthlyPayment = calcMonthlyPayment(loanAmount, monthlyRate, loanTerm);
@@ -157,23 +170,29 @@ function simulate(inputs) {
   const poolStart = carPrice + totalLoanInterest;
 
   const months = Math.max(horizon, loanTerm);
+  const carryCost = keepWhenBuying ? (newInsurance + newRegistration) : 0;
 
-  // Buy outright — sells existing car, proceeds go into the pool
+  // Buy outright — sells existing car (or keeps it as second vehicle when keepWhenBuying)
   const buyRows = [];
-  let bPool = poolStart - carPrice + existingValue;
+  let bPool = keepWhenBuying ? poolStart - carPrice : poolStart - carPrice + existingValue;
   let bCar = carPrice;
+  let bExisting = keepWhenBuying ? existingValue : 0;
   for (let m = 1; m <= months; m++) {
     const sav = bPool * (roiMonthly - 1);
     bPool *= roiMonthly;
-    const dep = bCar * (1 - depMonthly);
+    bPool -= carryCost;
+    const depNew = bCar * (1 - depMonthly);
     bCar *= depMonthly;
-    buyRows.push({ payment: 0, depreciation: dep, loanInterest: 0, savingsInterest: sav, netWorth: bPool + bCar });
+    const depOld = bExisting * (1 - depMonthly);
+    bExisting *= depMonthly;
+    buyRows.push({ payment: carryCost, depreciation: depNew + depOld, loanInterest: 0, savingsInterest: sav, netWorth: bPool + bCar + bExisting });
   }
 
-  // Finance — sells existing car, proceeds go into the pool
+  // Finance — sells existing car (or keeps it as second vehicle when keepWhenBuying)
   const finRows = [];
-  let fPool = poolStart - downPayment + existingValue;
+  let fPool = keepWhenBuying ? poolStart - downPayment : poolStart - downPayment + existingValue;
   let fCar = carPrice;
+  let fExisting = keepWhenBuying ? existingValue : 0;
   let fLoan = loanAmount;
   for (let m = 1; m <= months; m++) {
     const sav = fPool * (roiMonthly - 1);
@@ -192,9 +211,13 @@ function simulate(inputs) {
       if (fLoan < 0.005) fLoan = 0;
       fPool -= pay;
     }
-    const dep = fCar * (1 - depMonthly);
+    pay += carryCost;
+    fPool -= carryCost;
+    const depNew = fCar * (1 - depMonthly);
     fCar *= depMonthly;
-    finRows.push({ payment: pay, depreciation: dep, loanInterest: loanInt, savingsInterest: sav, netWorth: fPool + fCar - fLoan });
+    const depOld = fExisting * (1 - depMonthly);
+    fExisting *= depMonthly;
+    finRows.push({ payment: pay, depreciation: depNew + depOld, loanInterest: loanInt, savingsInterest: sav, netWorth: fPool + fCar + fExisting - fLoan });
   }
 
   // Keep existing car — same starting pool, pays fuel cost diff each month
@@ -230,6 +253,9 @@ function render() {
     horizon: Math.max(1, +document.getElementById('horizon').value | 0),
     existingValue: +document.getElementById('existingValue').value,
     fuelDiff: +document.getElementById('fuelDiff').value,
+    keepWhenBuying: document.getElementById('keepWhenBuying').checked,
+    newInsurance: +document.getElementById('newInsurance').value,
+    newRegistration: +document.getElementById('newRegistration').value,
   };
 
   const { buyRows, finRows, keepRows, monthsTable } = simulate(inputs);
@@ -295,7 +321,7 @@ function render() {
   rows.innerHTML = html;
 }
 
-const INPUT_IDS = ['carPrice', 'downPayment', 'apr', 'loanTerm', 'depreciation', 'roi', 'horizon', 'existingValue', 'fuelDiff'];
+const INPUT_IDS = ['carPrice', 'downPayment', 'apr', 'loanTerm', 'depreciation', 'roi', 'horizon', 'existingValue', 'fuelDiff', 'keepWhenBuying', 'newInsurance', 'newRegistration'];
 
 function loadFromHash() {
   const hash = location.hash.startsWith('#') ? location.hash.slice(1) : location.hash;
@@ -303,13 +329,19 @@ function loadFromHash() {
   const params = new URLSearchParams(hash);
   for (const id of INPUT_IDS) {
     const v = params.get(id);
-    if (v !== null && v !== '') document.getElementById(id).value = v;
+    if (v === null) continue;
+    const el = document.getElementById(id);
+    if (el.type === 'checkbox') el.checked = v === '1';
+    else if (v !== '') el.value = v;
   }
 }
 
 function saveToHash() {
   const params = new URLSearchParams();
-  for (const id of INPUT_IDS) params.set(id, document.getElementById(id).value);
+  for (const id of INPUT_IDS) {
+    const el = document.getElementById(id);
+    params.set(id, el.type === 'checkbox' ? (el.checked ? '1' : '0') : el.value);
+  }
   history.replaceState(null, '', '#' + params.toString());
 }
 
